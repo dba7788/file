@@ -1,0 +1,256 @@
+
+alertmanager rules
+cat node_down.yml
+groups:
+- name: Node_Down
+  rules:
+  - alert: Node实例宕机
+    expr: up == 0
+    for: 10s
+    labels:
+      user: prometheus
+      severity: Warning
+    annotations:
+      summary: "{{ $labels.instance }} 服务宕机"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} has been Down."
+      
+      
+      
+ cat mysql_new.yml
+groups:
+ - name: Databases and brokers
+   rules:
+   - alert: MysqlDown
+     expr: mysql_up == 0
+     for: 5m
+     labels:
+       severity: critical
+     annotations:
+       summary: MySQL down (instance {{ $labels.instance }})
+       description: "MySQL instance is down on {{ $labels.instance }}  VALUE = {{ $value }}  LABELS: {{ $labels }}"
+
+   - alert: MysqlTooManyConnections
+     expr: avg by (instance) (max_over_time(mysql_global_status_threads_connected[5m])) / avg by (instance) (mysql_global_variables_max_connections) * 100 > 80
+     for: 5m
+     labels:
+       severity: warning
+     annotations:
+       summary: MySQL too many connections (instance {{ $labels.instance }})
+       description: "More than 80% of MySQL connections are in use on {{ $labels.instance }}  VALUE = {{ $value }}  LABELS: {{ $labels }}"
+   - alert: MysqlHighThreadsRunning
+     expr: avg by (instance) (max_over_time(mysql_global_status_threads_running[5m])) / avg by (instance) (mysql_global_variables_max_connections) * 100 > 60
+     for: 5m
+     labels:
+       severity: warning
+     annotations:
+       summary: MySQL high threads running (instance {{ $labels.instance }})
+       description: "More than 60% of MySQL connections are in running state on {{ $labels.instance }}  VALUE = {{ $value }}  LABELS: {{ $labels }}"
+   - alert: MysqlSlaveIoThreadNotRunning
+     expr: mysql_slave_status_master_server_id > 0 and ON (instance) mysql_slave_status_slave_io_running == 0
+     for: 5m
+     labels:
+       severity: critical
+     annotations:
+       summary: MySQL Slave IO thread not running (instance {{ $labels.instance }})
+       description: "MySQL Slave IO thread not running on {{ $labels.instance }}  VALUE = {{ $value }}  LABELS: {{ $labels }}"
+   - alert: MysqlSlaveSqlThreadNotRunning
+     expr: mysql_slave_status_master_server_id > 0 and ON (instance) mysql_slave_status_slave_sql_running == 0
+     for: 5m
+     labels:
+       severity: critical
+     annotations:
+       summary: MySQL Slave SQL thread not running (instance {{ $labels.instance }})
+       description: "MySQL Slave SQL thread not running on {{ $labels.instance }}  VALUE = {{ $value }}  LABELS: {{ $labels }}"
+   - alert: MysqlSlaveReplicationLag
+     expr: mysql_slave_status_master_server_id > 0 and ON (instance) (mysql_slave_status_seconds_behind_master - mysql_slave_status_sql_delay) > 300
+     for: 5m
+     labels:
+       severity: warning
+     annotations:
+       summary: MySQL Slave replication lag (instance {{ $labels.instance }})
+       description: "MysqL replication lag on {{ $labels.instance }}  VALUE = {{ $value }}  LABELS: {{ $labels }} "
+   - alert: MysqlRestarted
+     expr: mysql_global_status_uptime < 60
+     for: 5m
+     labels:
+       severity: warning
+     annotations:
+       summary: MySQL restarted (instance {{ $labels.instance }})
+       description: "MySQL has just been restarted, less than one minute ago on {{ $labels.instance }}.   VALUE = {{ $value }}   LABELS: {{ $labels }} "
+       
+       
+       
+       
+       
+       
+       
+[ prometheus-webhook-dingtalk-1.4.0.linux-amd64]$ cat config.yml
+## Request timeout
+# timeout: 5s
+
+## Customizable templates path
+# templates:
+#   - contrib/templates/legacy/template.tmpl
+
+## You can also override default template using `default_message`
+## The following example to use the 'legacy' template from v0.3.0
+# default_message:
+#   title: '{{ template "legacy.title" . }}'
+#   text: '{{ template "legacy.content" . }}'
+
+## Targets, previously was known as "profiles"
+targets:
+  webhook:
+    url: https://oapi.dingtalk.com/robot/send?access_token=d7472abf8b3778a5ac318f92a270982c2674d4bb0cf6ad6b32db2d3bd5bb3e3d
+    secret: SEC9f7610c38ad5a8ff4b7ca86571cd5d17e934a979de6fe3f2c854aace4660014a
+    message:
+      title: '{{ template "legacy.title" . }}'
+      text: '{{ template "legacy.content" . }}'
+      
+      
+      
+      
+      
+      
+      
+           
+             
+ [swadmin@localhost prometheus-2.23.0.linux-amd64]$ cat prometheus.yml
+# my global config
+global:
+  scrape_interval: 5s # 拉取targets默认时间间隔Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  evaluation_interval: 5s # 执行rules的时间间隔 Evaluate rules every 15 seconds. The default is every 1 minute.
+  scrape_timeout: 5s     # scrape_timeout is set to the global default (10s). 拉取一个target的超时时间
+  external_labels:
+    monitor: 'grafana-data-monitor' #额外的属性，会添加到拉取的数据并存到数据库中
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']
+
+
+
+# promethues存储数据用influxdb
+remote_write:
+  - url: "http://localhost:8086/api/v1/prom/write?db=prometheus&u=username&p=pass"
+remote_read:
+  - url: "http://localhost:8086/api/v1/prom/read?db=prometheus&u=username&p=pass"
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+rule_files:
+  - "/xx/xx/xx/alert_rules/*.yml"
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+    static_configs:
+    - targets: ['localhost:9090']
+
+######### mysql monitor
+  - job_name: 'mysql'
+    static_configs:
+    - targets: ['ip:9104']
+      labels:
+        instance: 'mysql_ip'
+
+    - targets: ['ip:9104']
+      labels:
+        instance: 'mysql_ip'
+
+    - targets: ['ip:9104']
+      labels:
+        instance: 'mysql_ip'
+
+######## linux monitor
+  - job_name: 'linux'
+    static_configs:
+    - targets: ['ip:9100']
+      labels:
+        instance: 'linux_ip'
+
+    - targets: ['ip:9100']
+      labels:
+        instance: 'linux_ip'
+
+    - targets: ['ip:9100']
+      labels:
+        instance: 'linux_ip'
+
+
+        
+        
+        
+        
+        
+        
+        
+        
+        
+cat alertmanager.yml
+global:
+  #每5分钟检查一次是否恢复
+  resolve_timeout: 5m
+
+route:
+  #采用哪个标签来作为分组依据
+  group_by: ['alertname']
+  #组告警等待时间。也就是告警产生后等待10s，如果有同组告警一起发出
+  group_wait: 10s
+  #两组告警的间隔时间
+  group_interval: 10s
+  #重复告警的间隔时间，减少相同告警的发送频率
+  repeat_interval: 1h
+  #设置接收人webhook
+  receiver: 'webhook'
+  routes:
+  - receiver: webhook
+    group_wait: 10s
+    match:
+      team: node
+
+receivers:
+- name: 'webhook'
+  webhook_configs:
+  - url: 'http://localhost:8060/dingtalk/webhook/send'
+    #警报被解决之后是否通知
+    send_resolved: true
+    
+    
+    
+            
+ prometheus-webhook-dingtalk-1.4.0.linux-amd64]$ cat config.yml
+## Request timeout
+# timeout: 5s
+
+## Customizable templates path
+# templates:
+#   - contrib/templates/legacy/template.tmpl
+
+## You can also override default template using `default_message`
+## The following example to use the 'legacy' template from v0.3.0
+# default_message:
+#   title: '{{ template "legacy.title" . }}'
+#   text: '{{ template "legacy.content" . }}'
+
+## Targets, previously was known as "profiles"
+targets:
+  webhook:
+    url: https://oapi.dingtalk.com/robot/xxxx
+    secret: SECxxxx
+    message:
+      title: '{{ template "legacy.title" . }}'
+      text: '{{ template "legacy.content" . }}'
+      
+      
+      
+                         
+      
+      
