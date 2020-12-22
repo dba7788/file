@@ -1,0 +1,29 @@
+1:
+test.yml
+- hosts: dbhost
+  gather_facts: false
+  tasks:
+  - name: token
+    debug: msg="{{sitetoken}}"
+  - name: 批量加索引任务1
+    shell: echo "{{ item }}"
+    with_sequence: start=0 end=19 stride=1
+
+  - name: 批量加索引任务2
+    shell: echo "{{ item }}"
+    with_sequence: start=10 end=19 stride=1
+    
+2:    
+ansible-playbook -i ~/allhost.ini test.yml --limit dbhost --list-host 
+ansible-playbook -i ./allhost.ini test.yml --limit x.x.x.x -u user -vvvv
+
+3:
+allhost.ini
+[dbhost]
+x.x.x.x sitetoken=xxxname
+[linuxhost]
+x.x.x.x sitetoken=xxxname
+
+
+[live_collect_db:vars]
+ansible_become_password=xxxx
