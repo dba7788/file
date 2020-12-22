@@ -15,7 +15,7 @@ test.yml
     
 2:    
 ansible-playbook -i ~/allhost.ini test.yml --limit dbhost --list-host 
-ansible-playbook -i ./allhost.ini test.yml --limit x.x.x.x -u user -vvvv
+ansible-playbook -i ./allhost.ini test.yml --limit x.x.x.x -u username -vvvv
 
 3:
 allhost.ini
