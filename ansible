@@ -93,3 +93,30 @@ git fetch --all && git reset --hard origin/master && git clean -fd && git pull
 innobackupex --defaults-file=/opt/conf/xx.cnf --decompress --parallel=8 ./
 find ./ -name "*.qp" -maxdepth 2| xargs rm 
 innobackupex --defaults-file=/opt/conf/xx.cnf --apply-log  --use-memory=4G ./
+
+
+
+
+*****flash******
+gcc -w  `pkg-config --cflags --libs glib-2.0` source/binlogParseGlib.c  -o binary/flashback
+
+zsh: command not found: pkg-config
+source/binlogParseGlib.c:5:10: fatal error: 'endian.h' file not found
+
+编译myflash
+wget https://github.com/Meituan-Dianping/MyFlash/archive/master.zip
+yum -y  install libgnomeui-devel 
+gcc -w  `pkg-config --cflags --libs glib-2.0` source/binlogParseGlib.c  -o binary/flashback
+
+
+产生binlog_output_base.flashback文件:
+./binary/flashback --binlogFileNames=/opt/data/data2/mysql-bin.000007 --start-position=4635 --stop-position=5158
+./flashback  --sqlTypes='INSERT' --binlogFileNames=/opt/data/data2/mysql-bin.000007  #回滚该文件中的所有insert语句
+
+切割大文件
+./flashback --maxSplitSize=100 --binlogFileNames=binlog_output_base.flashback
+
+查询回滚SQL：mysqlbinlog -vv binlog_output_base.flashback
+执行回滚:
+mysqlbinlog --skip-gtids  binlog_output_base.flashback | mysql -uroot -p --socket=/opt/data/data_16303/mysql.sock monitor
+
