@@ -89,3 +89,7 @@ show variables like 'server_audit_logging';
 
 
 git fetch --all && git reset --hard origin/master && git clean -fd && git pull
+恢复
+innobackupex --defaults-file=/opt/conf/xx.cnf --decompress --parallel=8 ./
+find ./ -name "*.qp" -maxdepth 2| xargs rm 
+innobackupex --defaults-file=/opt/conf/xx.cnf --apply-log  --use-memory=4G ./
