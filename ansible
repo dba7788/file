@@ -17,6 +17,13 @@ test.yml
 ansible-playbook -i ~/allhost.ini test.yml --limit dbhost --list-host 
 ansible-playbook -i ./allhost.ini test.yml --limit x.x.x.x -u username -vvvv
 
+设置参数 set global
+ansible-playbook -i ../../inventery/aaa.ini ./change_var.yml --limit all-db --list-host
+ansible-playbook -i ../../inventery/aaa.ini ./change_var.yml --limit 185.121.170.251 -u user | tee /tmp/11.log
+ansible-playbook -i ../../inventery/aaa.ini ./change_var.yml --limit all-db -u user -f 10 | tee /tmp/11.log
+
+
+
 3:
 allhost.ini
 [dbhost]
@@ -27,3 +34,57 @@ x.x.x.x sitetoken=xxxname
 
 [live_collect_db:vars]
 ansible_become_password=xxxx
+
+
+
+copy file 
+- hosts: all
+  gather_facts: false
+  #become: yes
+  #become_user: root
+  #become_method: su
+  tasks:
+  - name: copy file到服务器
+    copy:
+    #template:
+        src: "/home/ansible/database/roles/db_audit/template/server_audit.so"
+        dest: "/opt/apps/mysql/lib/plugin/server_audit.so"
+        force: no
+
+  - name: chmod属性
+    shell: /usr/bin/chmod a+x /opt/apps/mysql/lib/plugin/server_audit.so
+
+  - name: db_install_audit
+    register: result
+    
+  - name: 打印result
+    debug: msg={{ result.stdout_lines}}
+    
+
+  - name: 禁止开启audit写入配置文件
+    shell: /usr/bin/echo "server_audit_logging = OFF" >>/opt/conf/xx.cnf
+    
+    
+    
+    
+    
+wget https://downloads.mariadb.org/interstitial/mariadb-10.2.38/bintar-linux-x86_64/mariadb-10.2.38-linux-x86_64.tar.gz    
+strings /lib64/libc.so.6 |grep GLIBC_ |grep 2.14
+mv /tmp/server_audit.so /opt/apps/mysql/lib/plugin/
+chmod a+x /opt/apps/mysql/lib/plugin/server_audit.so
+
+show variables like 'server_audit%';
+install plugin server_audit SONAME 'server_audit.so';
+show variables like 'server_audit%';
+set global server_audit_file_rotations=70;
+set global server_audit_file_rotate_size=1000000000;
+set global server_audit_query_log_limit=2048;
+set global server_audit_logging=ON;
+
+
+停止审计：
+set global server_audit_logging=OFF;
+show variables like 'server_audit_logging';
+
+
+
